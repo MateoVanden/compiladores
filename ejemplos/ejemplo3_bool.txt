@@ -1,0 +1,8 @@
+bool main() {
+   int edad;
+   bool mayor;
+
+   edad = (10 + 8) * 2;
+   mayor = true;
+   return mayor;
+}

@@ -1,0 +1,17 @@
+// Estructuras anidadas y return anticipado:
+// busca el primer número cuyo cuadrado supera 50
+int main() {
+   int i;
+   int encontrado;
+
+   i = 1;
+   encontrado = 0;
+   while (i < 100) {
+      if (i * i > 50) {
+         encontrado = i;
+         return encontrado;   // resultado: 8 (sale de main en medio del ciclo)
+      }
+      i = i + 1;
+   }
+   return 0;
+}

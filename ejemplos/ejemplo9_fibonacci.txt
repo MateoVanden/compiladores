@@ -1,0 +1,23 @@
+// Décimo número de Fibonacci (con resta, while e if sin else)
+int main() {
+   int n;
+   int a;
+   int b;
+   int aux;
+   bool listo;
+
+   n = 10;
+   a = 0;
+   b = 1;
+   listo = n == 0;
+   while (!listo) {
+      aux = a + b;
+      a = b;
+      b = aux;
+      n = n - 1;
+      if (n == 0) {
+         listo = true;
+      }
+   }
+   return a;              // resultado: 55
+}

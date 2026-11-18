@@ -1,0 +1,7 @@
+// Error en tiempo de ejecución: desbordamiento de int detectado por el intérprete
+int main() {
+   int x;
+   x = 2147483647;
+   x = x + 1;
+   return x;
+}

@@ -1,0 +1,15 @@
+int main() {
+   int x;
+   bool b;
+
+   x = 10;
+   b = x && true;      // && requiere bool
+   if (x) {            // la condición debe ser bool
+      x = 1;
+   }
+   while (b == 3) {    // == compara valores del mismo tipo
+      x = x - 1;
+   }
+   b = !x;             // ! requiere bool
+   return b;           // main retorna int
+}

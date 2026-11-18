@@ -1,0 +1,9 @@
+// El parser se recupera en cada ';' y reporta todos los errores juntos
+int main() {
+   int x;
+   int y;
+   x = 1 + ;
+   y = (2 * 3;
+   x = x y;
+   return x;
+}

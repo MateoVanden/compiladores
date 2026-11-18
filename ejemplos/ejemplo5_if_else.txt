@@ -1,0 +1,15 @@
+// Máximo entre dos números con if / else
+int main() {
+   int a;
+   int b;
+   int max;
+
+   a = 7;
+   b = 12;
+   if (a > b) {
+      max = a;
+   } else {
+      max = b;
+   }
+   return max;            // resultado: 12
+}

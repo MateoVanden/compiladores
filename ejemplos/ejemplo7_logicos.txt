@@ -1,0 +1,12 @@
+// Operadores relacionales y lógicos: <  >  ==  &&  ||  !
+bool main() {
+   int edad;
+   bool socio;
+   bool descuento;
+
+   edad = 70;
+   socio = false;
+   // descuento si es jubilado (más de 65) o socio, pero no si tiene exactamente 18
+   descuento = (edad > 65 || socio) && !(edad == 18);
+   return descuento;      // resultado: true (el ejecutable devuelve 1)
+}

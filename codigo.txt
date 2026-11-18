@@ -1,0 +1,18 @@
+// Programa por defecto: suma de los números pares entre 1 y 10
+int main() {
+   int i;
+   int suma;
+   bool esPar;
+
+   i = 1;
+   suma = 0;
+   esPar = false;
+   while (i < 11) {
+      if (esPar) {
+         suma = suma + i;
+      }
+      esPar = !esPar;
+      i = i + 1;
+   }
+   return suma;          // resultado: 2 + 4 + 6 + 8 + 10 = 30
+}

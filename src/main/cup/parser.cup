@@ -1,0 +1,211 @@
+package com.compilador;
+import java_cup.runtime.*;
+import com.compilador.ast.EstructuraAST.*;
+import com.compilador.ast.Operador;
+import com.compilador.ast.TipoDato;
+import java.util.ArrayList;
+import java.util.List;
+
+/*
+ * ANALIZADOR SINTÁCTICO (Puntos 1, 4 y 5 del Pre-Proyecto)
+ *
+ * Gramática original de la consigna:
+ *   P -> E ;
+ *   E -> E + E | E * E | ( E ) | nro
+ *
+ * Gramática extendida (BNF):
+ *   programa      -> tipo_retorno main ( ) { lista_decl lista_sent }
+ *   tipo_retorno  -> int | bool | void
+ *   lista_decl    -> lista_decl declaracion | λ
+ *   declaracion   -> tipo_dato ID ;
+ *   tipo_dato     -> int | bool
+ *   lista_sent    -> lista_sent sentencia | λ
+ *   sentencia     -> ID = E ;
+ *                  | return E ;
+ *                  | return ;
+ *                  | if ( E ) bloque
+ *                  | if ( E ) bloque else bloque
+ *                  | while ( E ) bloque
+ *   bloque        -> { lista_sent }
+ *   E             -> E + E | E - E | E * E
+ *                  | E < E | E > E | E == E
+ *                  | E && E | E || E | ! E
+ *                  | ( E ) | NUMERO | ID | true | false
+ *
+ * - Las listas son recursivas a IZQUIERDA (lo más eficiente para un parser LR:
+ *   la pila no crece con la longitud de la lista).
+ * - La gramática de E es ambigua; la ambigüedad se resuelve con las declaraciones
+ *   de precedencia/asociatividad de CUP (de menor a mayor precedencia):
+ *        ||   <   &&   <   ==   <   < >   <   + -   <   *   <   ! (unario)
+ *   Todos los binarios son asociativos a izquierda.
+ * - No hay ambigüedad del "else colgante" porque los bloques llevan llaves
+ *   obligatorias: ELSE no pertenece a FOLLOW(sentencia).
+ * - Recuperación de errores: ante un error sintáctico dentro de una sentencia,
+ *   se descarta hasta el próximo ';' y se sigue analizando para informar todos
+ *   los errores posibles en una sola pasada.
+ *
+ * Cada acción semántica construye un nodo del AST (Árbol Sintáctico Abstracto).
+ */
+
+parser code {:
+    /** Cantidad de errores sintácticos encontrados (si es > 0 se aborta la compilación). */
+    public int erroresSintacticos = 0;
+
+    /** Traduce el nombre interno de un terminal a algo legible para el usuario. */
+    private static String legible(int id) {
+        switch (id) {
+            case sym.PUNTO_COMA:    return "';'";
+            case sym.PAREN_IZQ:     return "'('";
+            case sym.PAREN_DER:     return "')'";
+            case sym.LLAVE_IZQ:     return "'{'";
+            case sym.LLAVE_DER:     return "'}'";
+            case sym.OP_ASIGNACION: return "'='";
+            case sym.OP_SUMA:       return "'+'";
+            case sym.OP_RESTA:      return "'-'";
+            case sym.OP_MULT:       return "'*'";
+            case sym.OP_MENOR:      return "'<'";
+            case sym.OP_MAYOR:      return "'>'";
+            case sym.OP_IGUAL:      return "'=='";
+            case sym.OP_AND:        return "'&&'";
+            case sym.OP_OR:         return "'||'";
+            case sym.OP_NOT:        return "'!'";
+            case sym.PR_INT:        return "'int'";
+            case sym.PR_BOOL:       return "'bool'";
+            case sym.PR_VOID:       return "'void'";
+            case sym.PR_MAIN:       return "'main'";
+            case sym.PR_RETURN:     return "'return'";
+            case sym.PR_IF:         return "'if'";
+            case sym.PR_ELSE:       return "'else'";
+            case sym.PR_WHILE:      return "'while'";
+            case sym.BOOL_TRUE:     return "'true'";
+            case sym.BOOL_FALSE:    return "'false'";
+            case sym.ID:            return "identificador";
+            case sym.NUMERO:        return "número";
+            case sym.EOF:           return "fin de archivo";
+            default:                return sym.terminalNames[id];
+        }
+    }
+
+    @Override
+    public void syntax_error(Symbol s) {
+        erroresSintacticos++;
+        String encontrado = (s.value != null) ? "'" + s.value + "'" : legible(s.sym);
+        String donde = s.left > 0 ? "Línea " + s.left + ", columna " + s.right + ": " : "";
+
+        StringBuilder esperados = new StringBuilder();
+        for (Integer id : expected_token_ids()) {
+            if (id == sym.error) continue;
+            if (esperados.length() > 0) esperados.append(", ");
+            esperados.append(legible(id));
+        }
+        System.out.println("[ERROR SINTÁCTICO] " + donde + "token inesperado " + encontrado
+                + (esperados.length() > 0 ? " (se esperaba: " + esperados + ")" : ""));
+    }
+
+    @Override
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+        throw new Exception("el analizador sintáctico no pudo recuperarse del error.");
+    }
+:}
+
+/* ------------------------------ Terminales ------------------------------ */
+terminal PR_INT, PR_BOOL, PR_VOID, PR_MAIN, PR_RETURN, PR_IF, PR_ELSE, PR_WHILE;
+terminal BOOL_TRUE, BOOL_FALSE;
+terminal OP_SUMA, OP_RESTA, OP_MULT;
+terminal OP_MENOR, OP_MAYOR, OP_IGUAL;
+terminal OP_AND, OP_OR, OP_NOT;
+terminal OP_ASIGNACION;
+terminal PAREN_IZQ, PAREN_DER, LLAVE_IZQ, LLAVE_DER, PUNTO_COMA;
+terminal String ID, NUMERO;
+
+/* ---------------------------- No terminales ----------------------------- */
+non terminal NodoPrograma programa;
+non terminal TipoDato tipo_retorno, tipo_dato;
+non terminal List<NodoDeclaracion> lista_declaraciones;
+non terminal NodoDeclaracion declaracion;
+non terminal List<NodoSentencia> lista_sentencias, bloque;
+non terminal NodoSentencia sentencia;
+non terminal NodoExpresion expresion;
+
+/* ------------------- Precedencia (de menor a mayor) --------------------- */
+precedence left OP_OR;
+precedence left OP_AND;
+precedence left OP_IGUAL;
+precedence left OP_MENOR, OP_MAYOR;
+precedence left OP_SUMA, OP_RESTA;
+precedence left OP_MULT;
+precedence right OP_NOT;
+
+start with programa;
+
+/* ------------------------------ Producciones ---------------------------- */
+
+programa ::= tipo_retorno:tr PR_MAIN:m PAREN_IZQ PAREN_DER LLAVE_IZQ lista_declaraciones:ld lista_sentencias:ls LLAVE_DER:f
+             {: RESULT = new NodoPrograma(tr, ld, ls, mleft, fleft); :} ;
+
+tipo_retorno ::= PR_INT  {: RESULT = TipoDato.INT; :}
+               | PR_BOOL {: RESULT = TipoDato.BOOL; :}
+               | PR_VOID {: RESULT = TipoDato.VOID; :} ;
+
+lista_declaraciones ::= lista_declaraciones:ld declaracion:d
+                        {: ld.add(d); RESULT = ld; :}
+                      | /* vacío */
+                        {: RESULT = new ArrayList<NodoDeclaracion>(); :} ;
+
+declaracion ::= tipo_dato:td ID:id PUNTO_COMA
+                {: RESULT = new NodoDeclaracion(td, id, idleft); :} ;
+
+tipo_dato ::= PR_INT  {: RESULT = TipoDato.INT; :}
+            | PR_BOOL {: RESULT = TipoDato.BOOL; :} ;
+
+lista_sentencias ::= lista_sentencias:ls sentencia:s
+                     {: if (s != null) ls.add(s); RESULT = ls; :}
+                   | /* vacío */
+                     {: RESULT = new ArrayList<NodoSentencia>(); :} ;
+
+bloque ::= LLAVE_IZQ lista_sentencias:ls LLAVE_DER
+           {: RESULT = ls; :} ;
+
+sentencia ::= ID:id OP_ASIGNACION expresion:val PUNTO_COMA
+              {: RESULT = new Asignacion(id, val, idleft); :}
+            | PR_RETURN:r expresion:val PUNTO_COMA
+              {: RESULT = new Return(val, rleft); :}
+            | PR_RETURN:r PUNTO_COMA
+              {: RESULT = new Return(null, rleft); :}
+            | PR_IF:i PAREN_IZQ expresion:c PAREN_DER bloque:entonces
+              {: RESULT = new If(c, entonces, null, ileft); :}
+            | PR_IF:i PAREN_IZQ expresion:c PAREN_DER bloque:entonces PR_ELSE bloque:sino
+              {: RESULT = new If(c, entonces, sino, ileft); :}
+            | PR_WHILE:w PAREN_IZQ expresion:c PAREN_DER bloque:cuerpo
+              {: RESULT = new While(c, cuerpo, wleft); :}
+            | error PUNTO_COMA
+              {: RESULT = null; /* sentencia descartada por error sintáctico */ :} ;
+
+expresion ::= expresion:izq OP_SUMA:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.SUMA, der, oleft); :}
+            | expresion:izq OP_RESTA:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.RESTA, der, oleft); :}
+            | expresion:izq OP_MULT:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.MULTIPLICACION, der, oleft); :}
+            | expresion:izq OP_MENOR:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.MENOR, der, oleft); :}
+            | expresion:izq OP_MAYOR:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.MAYOR, der, oleft); :}
+            | expresion:izq OP_IGUAL:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.IGUAL, der, oleft); :}
+            | expresion:izq OP_AND:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.AND, der, oleft); :}
+            | expresion:izq OP_OR:o expresion:der
+              {: RESULT = new OperacionBinaria(izq, Operador.OR, der, oleft); :}
+            | OP_NOT:o expresion:e
+              {: RESULT = new OperacionUnaria(Operador.NOT, e, oleft); :}
+            | PAREN_IZQ expresion:e PAREN_DER
+              {: RESULT = e; :}
+            | NUMERO:n
+              {: RESULT = new Numero(n, nleft); :}
+            | ID:id
+              {: RESULT = new Identificador(id, idleft); :}
+            | BOOL_TRUE:b
+              {: RESULT = new Booleano(true, bleft); :}
+            | BOOL_FALSE:b
+              {: RESULT = new Booleano(false, bleft); :} ;
