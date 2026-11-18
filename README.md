@@ -1,4 +1,4 @@
-# Mini compilador – Pre-Proyecto Compiladores 2025
+# Mini compilador – Pre-Proyecto Compiladores 2026
 
 **Universidad Nacional de Villa Mercedes** – Escuela de Ingeniería y Ciencias Ambientales
 Materia: **Compiladores** – Ingeniería en Sistemas
@@ -129,7 +129,6 @@ PreProyecto/
 ├── ejemplos/                       # Programas de prueba (válidos y con errores)
 ├── ejecutar_gcc.bat                # Ensambla programa.s con gcc, lo ejecuta y muestra el resultado
 ├── probar_ejemplos.ps1             # Prueba de punta a punta: intérprete vs. ejecutable de gcc
-├── Guia_Compilador_Explicada.pdf   # Guía de estudio del compilador
 └── src/
     ├── main/
     │   ├── jflex/Lexer.flex        # Analizador léxico (expresiones regulares)

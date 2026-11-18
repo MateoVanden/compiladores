@@ -7,7 +7,7 @@
     <groupId>com.compilador</groupId>
     <artifactId>PreProyecto</artifactId>
     <version>1.0</version>
-    <name>Mini compilador - Pre-Proyecto Compiladores 2025</name>
+    <name>Mini compilador - Pre-Proyecto Compiladores 2026</name>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

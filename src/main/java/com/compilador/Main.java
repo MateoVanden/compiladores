@@ -12,7 +12,7 @@ import com.compilador.ast.GeneradorCodigo;
 import com.compilador.ast.TraductorAssembly2D;
 
 /**
- * Mini compilador - Pre-Proyecto Compiladores 2025.
+ * Mini compilador - Pre-Proyecto Compiladores 2026.
  *
  * Etapas:
  *   1. Análisis léxico (JFlex) y sintáctico (CUP)
